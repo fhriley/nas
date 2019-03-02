@@ -121,8 +121,9 @@ def get_logger(name, filename, level):
     formatter = logging.Formatter('%(asctime)s|%(name)s|%(levelname)s|%(lineno)d|%(message)s')
     handler.setFormatter(formatter)
     logger.addHandler(handler)
+
     console = logging.StreamHandler()
-    console.setLevel(logging.DEBUG)
+    console.setLevel(level)
     console.setFormatter(formatter)
     logger.addHandler(console)
     return logger
