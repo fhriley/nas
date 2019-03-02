@@ -92,6 +92,7 @@ class State:
         self.control = control
         self.last_error = 0
         self.interval_cnt = 0
+        self.cpu_dc_min = args.cpu_dc_min
 
     def reset_pid(self, dc):
         self.last_error = 0
@@ -126,13 +127,13 @@ def get_logger(name, filename, level):
     logger.addHandler(console)
     return logger
 
-def cpu_control(logger, args, cpu_temp):
+def cpu_control(logger, args, cpu_dc_min, cpu_temp):
     assert cpu_temp >= args.cpu_tmin - args.cpu_tmin_hyst
-    coef = float(args.cpu_dc_max - args.cpu_dc_min) / (float(args.cpu_tmax - args.cpu_tmin) ** 2)
+    coef = float(args.cpu_dc_max - cpu_dc_min) / (float(args.cpu_tmax - args.cpu_tmin) ** 2)
     logger.debug('coef=%f', coef)
     offset = max(cpu_temp, args.cpu_tmin) - args.cpu_tmin
     logger.debug('offset=%d', offset)
-    return int(round(coef * (offset ** 2) + args.cpu_dc_min))
+    return int(round(coef * (offset ** 2) + cpu_dc_min))
 
 def pid(state, now, pv):
     time_unit = state.args.time_unit * state.args.disk_time_intervals
@@ -158,8 +159,10 @@ def control_loop(sch, now, state):
     if cpu_temp >= cpu_temp_check:
         logger.debug('%s%s', os.linesep, state)
         state.logger.debug('using cpu control loop')
+        if state.control == 'disk':
+            state.cpu_dc_min = max(state.args.cpu_dc_min, state.duty_cycle)
         state.control = 'cpu'
-        new_dc = cpu_control(state.logger, state.args, cpu_temp)
+        new_dc = cpu_control(state.logger, state.args, state.cpu_dc_min, cpu_temp)
         state.set_duty_cycle(new_dc)
         state.reset_pid(new_dc)
     else:
