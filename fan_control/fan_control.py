@@ -195,7 +195,7 @@ def write_influx(state, now):
         resp = requests.post('%s/write' % state.args.influx_uri, params={'db': state.args.influx_db}, data='\n'.join(data))
         resp.raise_for_status()
     except Exception as ex:
-        state.logger.exception(ex)
+        state.logger.error('connection to influx failed')
 
 _sighup_dc = None
 def log_loop(sch, logger, args, now, out_file):
@@ -321,6 +321,8 @@ if __name__ == '__main__':
         raise SystemExit(1)
 
     try:
+        logger.debug('starting')
+
         system.enable_manual_fan_control()
         system.set_duty_cycle(args.dc_default)
         time.sleep(5)
@@ -331,6 +333,9 @@ if __name__ == '__main__':
         sch.enter(0, 1, control_loop, (sch, time.time(), state))
         sch.run()
     except KeyboardInterrupt:
-        pass
+        logger.debug('got ctrl-c')
+    except Exception as ex:
+        logger.exception('got exception')
     finally:
         system.enable_manual_fan_control(False)
+        logger.debug('exiting')
