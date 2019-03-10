@@ -93,6 +93,18 @@ class State:
         self.last_error = 0
         self.interval_cnt = 0
         self.cpu_dc_min = args.cpu_dc_min
+        self.exc_cnt = 0
+        self.exc_threshold = 3
+        self.is_controlling = True
+
+    def begin(self):
+        if not self.is_controlling:
+            self.system.enable_manual_fan_control()
+            self.reset_pid(self.args.dc_bios)
+            self.is_controlling = True
+
+    def end(self):
+        self.exc_cnt = 0
 
     def reset_pid(self, dc):
         self.last_error = 0
@@ -106,6 +118,16 @@ class State:
             self.system.set_duty_cycle(actual_dc)
             self.logger.debug('new duty cycle: %d', actual_dc)
         self.duty_cycle = dc
+
+    def exception(self, ex):
+        self.exc_cnt += 1
+        self.logger.exception(ex)
+        if self.is_controlling and self.exc_cnt >= self.exc_threshold:
+            try:
+                self.system.enable_manual_fan_control(False)
+                self.is_controlling = False
+            except:
+                pass
 
     def __str__(self):
         return os.linesep.join(['%s: %s' % (vv, getattr(self, vv))
@@ -150,36 +172,48 @@ def pid(state, now, pv):
     state.last_error = error
     return min(max(state.duty_cycle + cv, args.dc_min), args.dc_max)
 
+_foo = 0
+
 def control_loop(sch, now, state):
+    global _foo
     state.logger.debug('loop start now=%s', now)
-    cpu_temp = state.system.get_cpu_temp()
 
-    cpu_temp_check = state.args.cpu_tmin
-    if state.control == 'cpu':
-        cpu_temp_check -= (state.args.cpu_tmin_hyst - 1)
-    if cpu_temp >= cpu_temp_check:
-        logger.debug('%s%s', os.linesep, state)
-        state.logger.debug('using cpu control loop')
-        if state.control == 'disk':
-            state.cpu_dc_min = max(state.args.cpu_dc_min, state.duty_cycle)
-        state.control = 'cpu'
-        new_dc = cpu_control(state.logger, state.args, state.cpu_dc_min, cpu_temp)
-        state.set_duty_cycle(new_dc)
-        state.reset_pid(new_dc)
-    else:
-        state.control = 'disk'
-        state.interval_cnt -= 1
-        if state.interval_cnt <= 0:
+    try:
+        state.begin()
+
+        cpu_temp = state.system.get_cpu_temp()
+
+        cpu_temp_check = state.args.cpu_tmin
+        if state.control == 'cpu':
+            cpu_temp_check -= (state.args.cpu_tmin_hyst - 1)
+        if cpu_temp >= cpu_temp_check:
             logger.debug('%s%s', os.linesep, state)
-            state.logger.debug('using disk pid loop')
-            state.interval_cnt = state.args.disk_time_intervals
-            disk_temp = state.system.get_disk_temp()
-            state.set_duty_cycle(pid(state, now, disk_temp))
+            state.logger.debug('using cpu control loop')
+            if state.control == 'disk':
+                state.cpu_dc_min = max(state.args.cpu_dc_min, state.duty_cycle)
+            state.control = 'cpu'
+            new_dc = cpu_control(state.logger, state.args, state.cpu_dc_min, cpu_temp)
+            state.set_duty_cycle(new_dc)
+            state.reset_pid(new_dc)
         else:
-            state.logger.debug('nothing to do')
+            state.control = 'disk'
+            state.interval_cnt -= 1
+            if state.interval_cnt <= 0:
+                logger.debug('%s%s', os.linesep, state)
+                state.logger.debug('using disk pid loop')
+                state.interval_cnt = state.args.disk_time_intervals
+                disk_temp = state.system.get_disk_temp()
+                state.set_duty_cycle(pid(state, now, disk_temp))
+            else:
+                state.logger.debug('nothing to do')
 
-    if not state.args.skip_influx:
-        write_influx(state, now)
+        if not state.args.skip_influx:
+            write_influx(state, now)
+
+    except Exception as ex:
+        state.exception(ex)
+    else:
+        state.end()
 
     now += state.args.time_unit
     state.logger.debug('scheduling next call at %s', now)
@@ -255,6 +289,8 @@ if __name__ == '__main__':
                         help='the JSON file containing the ipmi information')
     parser.add_argument('--disks', default='/dev/disk/by-bay/bay[1-8]',
                         help='the bash shell regex to use to get disk devices')
+    parser.add_argument('--dc-bios', type=lambda xx: ranged_int(xx, MIN_DC, MAX_DC), default=30,
+                        help='the default duty cycle when the bios is controlling (default: 30)')
     parser.add_argument('--dc-default', type=lambda xx: ranged_int(xx, MIN_DC, MAX_DC), default=20,
                         help='the default duty cycle when starting up (default: 20)')
     parser.add_argument('--dc-min', type=lambda xx: ranged_int(xx, MIN_DC, MAX_DC), default=15,
