@@ -94,7 +94,7 @@ class State:
         self.interval_cnt = 0
         self.cpu_dc_min = args.cpu_dc_min
         self.exc_cnt = 0
-        self.exc_threshold = 3
+        self.exc_threshold = 1
         self.is_controlling = True
 
     def begin(self):
@@ -172,10 +172,7 @@ def pid(state, now, pv):
     state.last_error = error
     return min(max(state.duty_cycle + cv, args.dc_min), args.dc_max)
 
-_foo = 0
-
 def control_loop(sch, now, state):
-    global _foo
     state.logger.debug('loop start now=%s', now)
 
     try:
@@ -212,10 +209,11 @@ def control_loop(sch, now, state):
 
     except Exception as ex:
         state.exception(ex)
+        now = time.time() + state.args.time_unit
     else:
         state.end()
+        now += state.args.time_unit
 
-    now += state.args.time_unit
     state.logger.debug('scheduling next call at %s', now)
     sch.enterabs(now, 1, control_loop, (sch, now, state))
 
