@@ -20,10 +20,11 @@ MIN_DC = 11
 MAX_DC = 100
 
 class System:
-    IPMITOOL = '/usr/bin/ipmitool '
-    IPMITOOL_LAN = IPMITOOL + '-I lanplus -H {host} -U {user} -P {password} '
+    IPMITOOL = '/usr/bin/ipmitool'
+    IPMITOOL_LAN = IPMITOOL + '-I lanplus -H {host} -U {user} -P {password}'
     DUTY_CYCLE = 'raw 0x30 0x30 0x02 0xff {val} > /dev/null'
     FAN_CONTROL_MODE = 'raw 0x30 0x30 0x01 {val} > /dev/null'
+    FAN_SPEED = 'raw 0x04 0x2d 0x30'
     CPUS = ('0xe', '0xf')
     CPU_TEMP = 'raw 0x04 0x2d {cpu}'
     HD_TEMP = '/usr/sbin/hddtemp {disk_regex}'
@@ -39,18 +40,22 @@ class System:
             pw = ipmi_info['password']
             ipmi_info['password'] = '<hidden>'
             if self._logger.isEnabledFor(logging.DEBUG):
-                self._logger.debug('%s%s', self.IPMITOOL_LAN.format(**ipmi_info), cmd)
+                self._logger.debug('%s %s', self.IPMITOOL_LAN.format(**ipmi_info), cmd)
             ipmi_info['password'] = pw
-            return self.IPMITOOL_LAN.format(**ipmi_info) + cmd
+            return '%s %s' % (self.IPMITOOL_LAN.format(**ipmi_info), cmd)
         else:
-            self._logger.debug('%s%s', self.IPMITOOL, cmd)
-            return self.IPMITOOL + cmd
+            cmd = '%s %s' % (self.IPMITOOL, cmd)
+            self._logger.debug(cmd)
+            return cmd
 
     def _convert_sdr_reading(self, mm, bb, k1, k2, val):
         return ((mm * val) + (bb * pow(10.0, k1))) * pow(10.0, k2)
 
     def _cpu_temp(self, val):
         return self._convert_sdr_reading(1, -128, 0, 0, val)
+
+    def _convert_rpm(self, val):
+        return self._convert_sdr_reading(120, 0, 0, 0, val)
 
     def enable_manual_fan_control(self, flag=True):
         cmd = self.FAN_CONTROL_MODE.format(val=hex(0 if flag else 1))
@@ -82,6 +87,10 @@ class System:
             self._logger.debug('%s mean: %s max: %s', temps, temps_mean, temps_max)
             return temps_mean
         raise Exception('unable to get disk temps')
+
+    def get_fan_speed(self):
+        speed = subprocess.check_output(self._ipmi_cmd(self.FAN_SPEED).split()).strip().split()[0]
+        return self._convert_rpm(int(speed, 16))
 
 class State:
     def __init__(self, args, logger, system, control):
@@ -299,10 +308,10 @@ if __name__ == '__main__':
                         help='the number of seconds between each iteration of the main loop (default: 10)')
     parser.add_argument('--disk-time-intervals', type=lambda xx: ranged_int(xx, 1, 100), default=3,
                         help='the number of iterations of the main loop before an iteration of the disk pid loop runs (default: 6)')
-    parser.add_argument('--cpu-tmin', type=float, default=50,
-                        help='the temperature where the cpu loop begins (default: 50)')
-    parser.add_argument('--cpu-tmax', type=float, default=80,
-                        help='the temperature at which the cpu loop will be at max duty cycle (default: 80)')
+    parser.add_argument('--cpu-tmin', type=float, default=55,
+                        help='the temperature where the cpu loop begins (default: 55)')
+    parser.add_argument('--cpu-tmax', type=float, default=75,
+                        help='the temperature at which the cpu loop will be at max duty cycle (default: 75)')
     parser.add_argument('--cpu-tmin_hyst', type=float, default=5,
                         help='the hysteresis when exiting the cpu loop, exit-temp = tmin - tmin_hyst (default: 5)')
     parser.add_argument('--cpu-dc-min', type=lambda xx: ranged_int(xx, MIN_DC, MAX_DC), default=20,
@@ -348,11 +357,11 @@ if __name__ == '__main__':
     if args.set_dc:
         system.enable_manual_fan_control()
         system.set_duty_cycle(args.set_dc)
-        raise SystemExit(1)
+        raise SystemExit(0)
 
     if args.set_control is not None:
         system.enable_manual_fan_control(bool(args.set_control))
-        raise SystemExit(1)
+        raise SystemExit(0)
 
     try:
         logger.debug('starting')
@@ -366,8 +375,8 @@ if __name__ == '__main__':
         sch = scheduler(time.time, time.sleep)
         sch.enter(0, 1, control_loop, (sch, time.time(), state))
         sch.run()
-    except KeyboardInterrupt:
-        logger.debug('got ctrl-c')
+    except KeyboardInterrupt, SystemExit:
+        pass
     except Exception as ex:
         logger.exception('got exception')
     finally:
