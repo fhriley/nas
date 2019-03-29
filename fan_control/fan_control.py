@@ -318,8 +318,8 @@ if __name__ == '__main__':
                         help='the minimum cpu loop duty cycle (default: 20)')
     parser.add_argument('--cpu-dc-max', type=lambda xx: ranged_int(xx, MIN_DC, MAX_DC), default=100,
                         help='the maximum cpu loop duty cycle (default: 100)')
-    parser.add_argument('--set-point', type=float, metavar='TEMP_C', default=35,
-                        help='the disk temperature set point (default: 35)')
+    parser.add_argument('--set-point', type=float, metavar='TEMP_C', default=39,
+                        help='the disk temperature set point (default: 39)')
     parser.add_argument('--kc', type=float, default=-5.0,
                         help='the controller gain (default: -5.0)')
     parser.add_argument('--ti', type=float, default=300,
