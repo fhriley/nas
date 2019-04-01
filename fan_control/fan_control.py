@@ -109,7 +109,7 @@ class State:
     def begin(self):
         if not self.is_controlling:
             self.system.enable_manual_fan_control()
-            self.reset_pid(self.args.dc_bios)
+            self.reset_pid(self.args.dc_min)
             self.is_controlling = True
 
     def end(self):
