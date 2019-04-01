@@ -298,8 +298,8 @@ if __name__ == '__main__':
                         help='the bash shell regex to use to get disk devices')
     parser.add_argument('--dc-bios', type=lambda xx: ranged_int(xx, MIN_DC, MAX_DC), default=30,
                         help='the default duty cycle when the bios is controlling (default: 30)')
-    parser.add_argument('--dc-default', type=lambda xx: ranged_int(xx, MIN_DC, MAX_DC), default=20,
-                        help='the default duty cycle when starting up (default: 20)')
+    parser.add_argument('--dc-default', type=lambda xx: ranged_int(xx, MIN_DC, MAX_DC), default=15,
+                        help='the default duty cycle when starting up (default: 15)')
     parser.add_argument('--dc-min', type=lambda xx: ranged_int(xx, MIN_DC, MAX_DC), default=15,
                         help='the minimum duty cycle for the disk pid loop (default: 15)')
     parser.add_argument('--dc-max', type=lambda xx: ranged_int(xx, MIN_DC, MAX_DC), default=100,
