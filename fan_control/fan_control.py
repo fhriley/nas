@@ -159,13 +159,21 @@ def get_logger(name, filename, level):
     logger.addHandler(console)
     return logger
 
-def cpu_control(logger, args, cpu_dc_min, cpu_temp):
-    assert cpu_temp >= args.cpu_tmin - args.cpu_tmin_hyst
+def cpu_control_exp(logger, args, cpu_dc_min, offset):
     coef = float(args.cpu_dc_max - cpu_dc_min) / (float(args.cpu_tmax - args.cpu_tmin) ** 2)
     logger.debug('coef=%f', coef)
+    return int(round(coef * (offset ** 2) + cpu_dc_min))
+
+def cpu_control_lin(logger, args, cpu_dc_min, offset):
+    dc_per_degree = float(args.cpu_dc_max - cpu_dc_min) / float(args.cpu_tmax - args.cpu_tmin)
+    logger.debug('dc_per_degree=%f', dc_per_degree)
+    return min(int(round(dc_per_degree * offset)) + cpu_dc_min, args.cpu_dc_max)
+
+def cpu_control(logger, args, cpu_dc_min, cpu_temp):
+    assert cpu_temp >= args.cpu_tmin - args.cpu_tmin_hyst
     offset = max(cpu_temp, args.cpu_tmin) - args.cpu_tmin
     logger.debug('offset=%d', offset)
-    return int(round(coef * (offset ** 2) + cpu_dc_min))
+    return cpu_control_exp(logger, args, cpu_dc_min, offset)
 
 def pid(state, now, pv):
     time_unit = state.args.time_unit * state.args.disk_time_intervals
