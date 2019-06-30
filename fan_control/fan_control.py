@@ -334,7 +334,7 @@ if __name__ == '__main__':
                         help='the integral time (default: 300)')
     parser.add_argument('--skip-influx', action='store_true')
     parser.add_argument('--use-deriv', action='store_true')
-    parser.add_argument('--influx-uri', default='http://influx.lan:8086',
+    parser.add_argument('--influx-uri', default='http://influx:8086',
                         help='send information to the given influx URI')
     parser.add_argument('--influx-db', default='fans',
                         help='send information to the given influx db')
