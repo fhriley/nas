@@ -80,7 +80,7 @@ class System:
         cmd = self.HD_TEMP.format(disk_regex=self._disk_regex)
         self._logger.debug(cmd)
         output = subprocess.check_output(cmd, shell=True).strip()
-        temps = [float(val) for val in re.findall(r'.+:\s([0-9]+)\xc2\xb0C', output)]
+        temps = [float(val) for val in re.findall(rb'.+:\s([0-9]+)\xc2\xb0C', output)]
         if temps:
             temps_max = max(temps)
             temps_mean = sum(temps) / len(temps)
