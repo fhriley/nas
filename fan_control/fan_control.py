@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import print_function
 import subprocess
@@ -316,8 +316,8 @@ if __name__ == '__main__':
                         help='the number of seconds between each iteration of the main loop (default: 10)')
     parser.add_argument('--disk-time-intervals', type=lambda xx: ranged_int(xx, 1, 100), default=3,
                         help='the number of iterations of the main loop before an iteration of the disk pid loop runs (default: 6)')
-    parser.add_argument('--cpu-tmin', type=float, default=55,
-                        help='the temperature where the cpu loop begins (default: 55)')
+    parser.add_argument('--cpu-tmin', type=float, default=60,
+                        help='the temperature where the cpu loop begins (default: 60)')
     parser.add_argument('--cpu-tmax', type=float, default=75,
                         help='the temperature at which the cpu loop will be at max duty cycle (default: 75)')
     parser.add_argument('--cpu-tmin_hyst', type=float, default=5,
@@ -383,7 +383,7 @@ if __name__ == '__main__':
         sch = scheduler(time.time, time.sleep)
         sch.enter(0, 1, control_loop, (sch, time.time(), state))
         sch.run()
-    except KeyboardInterrupt, SystemExit:
+    except (KeyboardInterrupt, SystemExit):
         pass
     except Exception as ex:
         logger.exception('got exception')
