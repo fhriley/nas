@@ -19,6 +19,13 @@ LOG_DIR = '/var/log'
 MIN_DC = 11
 MAX_DC = 100
 
+
+# https://www.dell.com/support/kbdoc/en-us/000135682/how-to-disable-the-third-party-pcie-card-default-cooling-response-on-poweredge-13g-servers
+# turn off default 3rd party PCIe cooling profile:
+#   ipmitool raw 0x30 0xce 0x00 0x16 0x05 0x00 0x00 0x00 0x05 0x00 0x01 0x00 0x00
+# turn on (revert to default) PCIe cooling:
+#   ipmitool raw 0x30 0xce 0x00 0x16 0x05 0x00 0x00 0x00 0x05 0x00 0x00 0x00 0x00
+
 class System:
     IPMITOOL = '/usr/bin/ipmitool'
     IPMITOOL_LAN = IPMITOOL + '-I lanplus -H {host} -U {user} -P {password}'
