@@ -325,8 +325,8 @@ if __name__ == '__main__':
                         help='the number of iterations of the main loop before an iteration of the disk pid loop runs (default: 6)')
     parser.add_argument('--cpu-tmin', type=float, default=60,
                         help='the temperature where the cpu loop begins (default: 60)')
-    parser.add_argument('--cpu-tmax', type=float, default=75,
-                        help='the temperature at which the cpu loop will be at max duty cycle (default: 75)')
+    parser.add_argument('--cpu-tmax', type=float, default=85,
+                        help='the temperature at which the cpu loop will be at max duty cycle (default: 85)')
     parser.add_argument('--cpu-tmin_hyst', type=float, default=5,
                         help='the hysteresis when exiting the cpu loop, exit-temp = tmin - tmin_hyst (default: 5)')
     parser.add_argument('--cpu-dc-min', type=lambda xx: ranged_int(xx, MIN_DC, MAX_DC), default=20,
